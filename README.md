@@ -1,40 +1,243 @@
-<<<<<<< HEAD
-# X-bookmark-ai
-=======
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# X Bookmark AI
 
-## Getting Started
+[TR](#turkce) | [EN](#english)
 
-First, run the development server:
+---
+
+## Turkce
+
+X (Twitter) bookmark arsivini yapay zeka ile kategorize eden, etiketleyen ve filtrelenebilir bir panelde sunan Next.js uygulamasi.
+
+### One Cikanlar
+
+- X data archive icinden bookmarks.js veya JSON uyumlu veri okuma
+- AI destekli kategori, ozet, etiket ve confidence uretimi
+- Dil secimi destegi (TR, EN ve ek diller)
+- Kategori bazli filtre, tam metin arama ve siralama
+- JSON ve CSV disa aktarma
+- Session bazli API key kullanimi
+- API tuketimini azaltan optimizasyonlar:
+- Duplicate bookmark dedup
+- Dil bazli session cache
+- Guclu sinyalde local hizli siniflandirma
+- Exponential backoff ile retry
+
+### Teknoloji Yigini
+
+- Next.js 14 (App Router)
+- TypeScript (strict)
+- Tailwind CSS
+- Zustand
+- Framer Motion
+- Sonner
+- Lucide React
+- Anthropic Claude API (claude-sonnet-4-20250514)
+
+### Mimari
+
+```text
+src/
+	app/
+		page.tsx                    -> Landing
+		app/page.tsx                -> Dashboard
+		api/categorize/route.ts     -> Claude API proxy
+	components/
+		landing/*                   -> Landing section bilesenleri
+		dashboard/*                 -> Upload, progress, sonuc ekranlari
+	lib/
+		parser.ts                   -> bookmarks.js parse islemi
+		categorizer.ts              -> Batch isleme + cache + retry
+		export.ts                   -> JSON/CSV export
+		types.ts                    -> Tum tipler
+	store/
+		useBookmarkStore.ts         -> Zustand state yonetimi
+```
+
+### Kurulum
+
+1. Gereksinimler:
+- Node.js 18+
+- npm 9+
+
+2. Bagimliliklari yukle:
+
+```bash
+npm install
+```
+
+3. Gelistirme sunucusunu baslat:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tarayicida ac:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Kullanim Akisi
 
-## Learn More
+1. Landing uzerinden uygulamaya gir.
+2. Anthropic API key gir.
+3. bookmarks.js dosyasini yukle.
+4. Cikti dili sec.
+5. Start Categorizing ile islemi baslat.
+6. Sonuclari filtrele, ara, sirala ve export et.
 
-To learn more about Next.js, take a look at the following resources:
+### Guvenlik Notu
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- API key sessionStorage uzerinde tutulur.
+- Sunucu tarafindaki proxy endpoint uzerinden Anthropic API cagrisi yapilir.
+- Uygulama veriyi kalici veritabanina yazmaz.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Not: Tarayici istemcisi endpoint cagrisinda API key gonderdigi icin bu yapi tam gizli sunucu-anahtar modelinden farklidir. Gercek production gizliligi icin key yonetimi sunucu ortam degiskenleri ve kimlik dogrulamasi ile yapilmalidir.
 
-## Deploy on Vercel
+### NPM Scriptleri
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
->>>>>>> 07b5793 (Initial commit from Create Next App)
+### Hata Giderme
+
+Non-fast-forward:
+
+```bash
+git pull --rebase origin main
+git push -u origin main
+```
+
+Unmerged files:
+
+```bash
+git rebase --abort
+git merge --abort
+git status
+```
+
+---
+
+## English
+
+A Next.js application that categorizes, tags, and organizes X (Twitter) bookmarks into a searchable dashboard using AI.
+
+### Highlights
+
+- Parse bookmarks.js (and JSON-compatible bookmark exports)
+- AI-powered category, summary, tags, and confidence generation
+- Multi-language output support (TR, EN, and more)
+- Category filters, full-text search, sorting
+- Export results as JSON and CSV
+- Session-based API key handling
+- API cost optimizations:
+- Duplicate bookmark deduplication
+- Language-scoped session cache
+- Fast local classification on strong text signals
+- Exponential backoff retry logic
+
+### Tech Stack
+
+- Next.js 14 (App Router)
+- TypeScript (strict)
+- Tailwind CSS
+- Zustand
+- Framer Motion
+- Sonner
+- Lucide React
+- Anthropic Claude API (claude-sonnet-4-20250514)
+
+### Architecture
+
+```text
+src/
+	app/
+		page.tsx                    -> Landing
+		app/page.tsx                -> Dashboard
+		api/categorize/route.ts     -> Claude API proxy
+	components/
+		landing/*                   -> Landing sections
+		dashboard/*                 -> Upload, progress, results UI
+	lib/
+		parser.ts                   -> bookmarks.js parser
+		categorizer.ts              -> Batch processing + cache + retry
+		export.ts                   -> JSON/CSV export
+		types.ts                    -> Shared TypeScript types
+	store/
+		useBookmarkStore.ts         -> Global state with Zustand
+```
+
+### Setup
+
+1. Requirements:
+- Node.js 18+
+- npm 9+
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Start development server:
+
+```bash
+npm run dev
+```
+
+Open in browser:
+
+```text
+http://localhost:3000
+```
+
+### Usage Flow
+
+1. Open the app from landing page.
+2. Enter your Anthropic API key.
+3. Upload bookmarks.js.
+4. Select output language.
+5. Click Start Categorizing.
+6. Filter, search, sort, and export results.
+
+### Security Note
+
+- API key is stored in sessionStorage.
+- Anthropic calls are made through the proxy endpoint.
+- No persistent database storage is used.
+
+Note: Since the client sends the API key to the endpoint, this is not a fully hidden server-secret model. For production-grade secrecy, use server-managed credentials with authentication.
+
+### NPM Scripts
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+### Troubleshooting
+
+Non-fast-forward push:
+
+```bash
+git pull --rebase origin main
+git push -u origin main
+```
+
+Unmerged files:
+
+```bash
+git rebase --abort
+git merge --abort
+git status
+```
+
+## License
+
+This repository is currently prepared for private/project use. Add a license file if needed.
