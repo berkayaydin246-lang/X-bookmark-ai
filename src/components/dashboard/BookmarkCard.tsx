@@ -2,8 +2,9 @@
 
 import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
+import { getCategoryBadgeStyle } from "@/lib/colors";
+import { useBookmarkStore } from "@/store/useBookmarkStore";
 import { CategorizedBookmark } from "@/lib/types";
-import { getCategoryColor } from "@/lib/colors";
 
 interface Props {
   bookmark: CategorizedBookmark;
@@ -11,69 +12,67 @@ interface Props {
 }
 
 export default function BookmarkCard({ bookmark, index }: Props) {
-  const color = getCategoryColor(bookmark.category);
+  const theme = useBookmarkStore((state) => state.theme);
+  const badgeStyle = getCategoryBadgeStyle(bookmark.category, theme);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.03 }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="group p-5 rounded-xl bg-surface border border-border hover:border-opacity-60 transition-all duration-300 hover:shadow-lg hover:shadow-black/20"
-      style={{ borderColor: `${color}20` }}
+      transition={{ duration: 0.22, delay: index * 0.02 }}
+      whileHover={{ y: -1, transition: { duration: 0.16 } }}
+      className="h-full rounded-[12px] border border-border bg-card p-[14px] transition-colors duration-150 hover:border-[var(--text-secondary)]"
     >
-      {/* Category badge */}
-      <div className="flex items-center justify-between mb-3">
-        <span
-          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border"
-          style={{
-            backgroundColor: `${color}15`,
-            color: color,
-            borderColor: `${color}30`,
-          }}
-        >
-          {bookmark.category}
-        </span>
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full ${
-            bookmark.confidence === "high"
-              ? "bg-green-500/10 text-green-400"
-              : bookmark.confidence === "medium"
-              ? "bg-yellow-500/10 text-yellow-400"
-              : "bg-red-500/10 text-red-400"
-          }`}
-        >
-          {bookmark.confidence}
-        </span>
-      </div>
-
-      {/* Summary */}
-      <p className="text-text-primary text-sm leading-relaxed mb-3">
-        {bookmark.summary}
-      </p>
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {bookmark.tags.map((tag) => (
+      <div className="flex h-full flex-col">
+        <div className="flex items-start justify-between gap-2">
           <span
-            key={tag}
-            className="text-xs text-text-muted bg-background/60 px-2 py-0.5 rounded-md"
+            style={{
+              backgroundColor: badgeStyle.backgroundColor,
+              color: badgeStyle.color,
+              padding: "2px 8px",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: 600,
+            }}
+            className="inline-flex max-w-[70%] items-center truncate"
           >
-            #{tag}
+            {bookmark.category}
           </span>
-        ))}
-      </div>
 
-      {/* Link */}
-      <a
-        href={bookmark.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent-light transition-colors group-hover:underline"
-      >
-        <ExternalLink className="w-3.5 h-3.5" />
-        View on X
-      </a>
-    </motion.div>
+          <span className="inline-flex items-center rounded-full bg-tag-bg px-2 py-0.5 text-[11px] font-medium capitalize text-tag-text">
+            {bookmark.confidence}
+          </span>
+        </div>
+
+        <div className="my-3 flex-1">
+          <p className="text-[15px] leading-[1.65] text-text-primary">
+            {bookmark.summary}
+          </p>
+        </div>
+
+        <div className="mt-auto">
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {bookmark.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md bg-tag-bg px-1.5 py-0.5 text-[10px] text-tag-text"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+
+          <a
+            href={bookmark.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-link transition-colors hover:underline"
+          >
+            <span>View on X</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </motion.article>
   );
 }

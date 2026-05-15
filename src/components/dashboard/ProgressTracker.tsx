@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useBookmarkStore } from "@/store/useBookmarkStore";
 
 export default function ProgressTracker() {
-  const { progress, status, errors } = useBookmarkStore();
+  const { progress, status, errors, statusMessage } = useBookmarkStore();
   const percentage =
     progress.totalCount > 0
       ? Math.round((progress.processedCount / progress.totalCount) * 100)
@@ -17,38 +17,45 @@ export default function ProgressTracker() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-2xl mx-auto"
+      className="mx-auto w-full max-w-2xl"
     >
-      <div className="p-6 rounded-2xl bg-surface border border-border">
-        <div className="flex items-center gap-3 mb-4">
-          <Loader2 className="w-5 h-5 text-accent animate-spin" />
+      <div className="soft-shadow rounded-3xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
           <span className="font-display font-semibold text-text-primary">
-            Processing batch {progress.currentBatch} of{" "}
-            {progress.totalBatches}...
+            Processing batch {progress.currentBatch} of {progress.totalBatches}
+            ...
           </span>
         </div>
 
-        <div className="relative h-3 rounded-full bg-background overflow-hidden">
+        <div className="relative h-3 overflow-hidden rounded-full bg-tag-bg">
           <motion.div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent to-accent-light"
+            className="absolute inset-y-0 left-0 rounded-full bg-cta"
             initial={{ width: "0%" }}
             animate={{ width: `${percentage}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           />
         </div>
 
-        <div className="flex items-center justify-between mt-3 text-sm text-text-muted">
+        <div className="mt-3 flex items-center justify-between text-sm text-text-muted">
           <span>
             {progress.processedCount} / {progress.totalCount} bookmarks
           </span>
           <span>{percentage}%</span>
         </div>
 
+        {statusMessage && (
+          <p className="mt-3 text-sm text-text-secondary">{statusMessage}</p>
+        )}
+
         {errors.length > 0 && (
           <div className="mt-4 space-y-2">
-            {errors.map((err, i) => (
-              <p key={i} className="text-red-400 text-sm">
-                {err}
+            {errors.map((error, index) => (
+              <p
+                key={index}
+                className="rounded-xl border border-border bg-badge px-3 py-2 text-sm text-text-secondary"
+              >
+                {error}
               </p>
             ))}
           </div>

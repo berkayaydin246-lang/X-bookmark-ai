@@ -1,54 +1,62 @@
-const CATEGORY_COLORS: Record<string, string> = {
-  "AI & Machine Learning": "#00D4AA",
-  "Web Development": "#3B82F6",
-  Design: "#F472B6",
-  "Finance & Investing": "#FBBF24",
-  Science: "#A78BFA",
-  Politics: "#EF4444",
-  Health: "#34D399",
-  Education: "#60A5FA",
-  Entertainment: "#FB923C",
-  Business: "#2DD4BF",
-  Technology: "#818CF8",
-  Sports: "#F87171",
-  Music: "#E879F9",
-  Food: "#FCD34D",
-  Travel: "#4ADE80",
-  Gaming: "#C084FC",
-  Crypto: "#F59E0B",
-  News: "#94A3B8",
-  Programming: "#06B6D4",
-  Art: "#EC4899",
-  Other: "#6E6E8A",
+export const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  "Yapay Zeka & Makine Öğrenimi": { bg: "#1a1a4e", text: "#818cf8" },
+  "Web Geliştirme": { bg: "#0f2d1f", text: "#34d399" },
+  Tasarım: { bg: "#2d1a3d", text: "#c084fc" },
+  Eğitim: { bg: "#1a2d0f", text: "#86efac" },
+  Kariyer: { bg: "#1a2a3d", text: "#60a5fa" },
+  Finans: { bg: "#2d2a0f", text: "#fbbf24" },
+  Bilim: { bg: "#0f2a2d", text: "#22d3ee" },
+  "İş Dünyası": { bg: "#2d1a1a", text: "#f87171" },
+  Sağlık: { bg: "#0f2d1a", text: "#4ade80" },
+  Eğlence: { bg: "#2d1a2a", text: "#f472b6" },
+  Politika: { bg: "#2d200f", text: "#fb923c" },
+  Diğer: { bg: "#1e1e1e", text: "#9ca3af" },
+  "AI & Machine Learning": { bg: "#1a1a4e", text: "#818cf8" },
+  "Web Development": { bg: "#0f2d1f", text: "#34d399" },
+  Design: { bg: "#2d1a3d", text: "#c084fc" },
+  Education: { bg: "#1a2d0f", text: "#86efac" },
+  Career: { bg: "#1a2a3d", text: "#60a5fa" },
+  Finance: { bg: "#2d2a0f", text: "#fbbf24" },
+  Science: { bg: "#0f2a2d", text: "#22d3ee" },
+  Business: { bg: "#2d1a1a", text: "#f87171" },
+  Health: { bg: "#0f2d1a", text: "#4ade80" },
+  Entertainment: { bg: "#2d1a2a", text: "#f472b6" },
+  Politics: { bg: "#2d200f", text: "#fb923c" },
+  Other: { bg: "#1e1e1e", text: "#9ca3af" },
 };
 
-const FALLBACK_COLORS = [
-  "#00D4AA",
-  "#3B82F6",
-  "#F472B6",
-  "#FBBF24",
-  "#A78BFA",
-  "#34D399",
-  "#60A5FA",
-  "#FB923C",
-  "#818CF8",
-  "#E879F9",
-];
+export const DEFAULT_COLOR = { bg: "#1e1e2e", text: "#a78bfa" };
 
-export function getCategoryColor(category: string): string {
-  if (CATEGORY_COLORS[category]) {
-    return CATEGORY_COLORS[category];
-  }
-
-  // Deterministic color based on category name
-  let hash = 0;
-  for (let i = 0; i < category.length; i++) {
-    hash = category.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
+export function getCategoryColor(category: string) {
+  return CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
 }
 
-export function getCategoryBgClass(category: string): string {
+export function getCategoryBadgeStyle(
+  category: string,
+  theme: "light" | "dark"
+) {
   const color = getCategoryColor(category);
-  return `bg-[${color}]/15 text-[${color}] border-[${color}]/30`;
+
+  return {
+    backgroundColor:
+      theme === "light" ? withOpacity(color.bg, 0.9) : color.bg,
+    color: color.text,
+  };
+}
+
+function withOpacity(hex: string, opacity: number): string {
+  const normalized = hex.replace("#", "");
+  const value =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : normalized;
+
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 }

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import {
+  ApiKeys,
   RawBookmark,
   CategorizedBookmark,
   ProcessingProgress,
@@ -10,13 +11,32 @@ import {
   SortOption,
   CategoryCount,
   Language,
+  SupportedModelId,
 } from "@/lib/types";
 import { getCategoryColor } from "@/lib/colors";
+import {
+  normalizeCategorizedBookmark,
+  normalizeCategory,
+} from "@/lib/categorizer";
 
 interface BookmarkStore {
-  // API Key
-  apiKey: string | null;
-  setApiKey: (key: string) => void;
+  // Model settings
+  selectedModel: SupportedModelId;
+  setSelectedModel: (model: SupportedModelId) => void;
+  apiKeys: ApiKeys;
+  setApiKey: (provider: keyof ApiKeys, key: string) => void;
+  ollamaModel: string;
+  setOllamaModel: (model: string) => void;
+  hydrateSettings: (settings: {
+    selectedModel?: SupportedModelId;
+    apiKeys?: Partial<ApiKeys>;
+    ollamaModel?: string;
+  }) => void;
+
+  // Theme
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+  initializeTheme: () => void;
 
   // Language
   language: Language;
@@ -36,9 +56,13 @@ interface BookmarkStore {
   setProgress: (progress: ProcessingProgress) => void;
   errors: string[];
   addError: (error: string) => void;
+  setErrors: (errors: string[]) => void;
+  statusMessage: string | null;
+  setStatusMessage: (message: string | null) => void;
 
   // Results
   bookmarks: CategorizedBookmark[];
+  setBookmarks: (bookmarks: CategorizedBookmark[]) => void;
   addBookmarks: (bookmarks: CategorizedBookmark[]) => void;
 
   // Filters
@@ -50,16 +74,79 @@ interface BookmarkStore {
   setSortBy: (sort: SortOption) => void;
 
   // Actions
+  prepareForRun: () => void;
+  resetForReprocess: () => void;
   reset: () => void;
   startTime: number | null;
   setStartTime: (time: number) => void;
 }
 
 export const useBookmarkStore = create<BookmarkStore>((set) => ({
-  apiKey: null,
-  setApiKey: (key) => set({ apiKey: key }),
+  selectedModel: "anthropic-haiku",
+  setSelectedModel: (model) => set({ selectedModel: model }),
+  apiKeys: {
+    anthropic: "",
+    groq: "",
+    gemini: "",
+  },
+  setApiKey: (provider, key) =>
+    set((state) => ({
+      apiKeys: {
+        ...state.apiKeys,
+        [provider]: key,
+      },
+    })),
+  ollamaModel: "llama3",
+  setOllamaModel: (model) => set({ ollamaModel: model }),
+  hydrateSettings: (settings) =>
+    set((state) => ({
+      selectedModel: settings.selectedModel ?? state.selectedModel,
+      apiKeys: settings.apiKeys
+        ? {
+            ...state.apiKeys,
+            ...settings.apiKeys,
+          }
+        : state.apiKeys,
+      ollamaModel: settings.ollamaModel ?? state.ollamaModel,
+    })),
 
-  language: "en",
+  theme: "dark",
+  toggleTheme: () =>
+    set((state) => {
+      const nextTheme = state.theme === "dark" ? "light" : "dark";
+
+      if (typeof window !== "undefined") {
+        document.documentElement.classList.toggle("dark", nextTheme === "dark");
+        localStorage.setItem("x-bookmark-ai-theme", nextTheme);
+      }
+
+      return {
+        theme: nextTheme,
+      };
+    }),
+  initializeTheme: () =>
+    set(() => {
+      if (typeof window === "undefined") {
+        return { theme: "dark" as const };
+      }
+
+      const storedTheme = localStorage.getItem("x-bookmark-ai-theme");
+      const nextTheme =
+        storedTheme === "light" || storedTheme === "dark"
+          ? storedTheme
+          : document.documentElement.classList.contains("dark")
+          ? "dark"
+          : "light";
+
+      document.documentElement.classList.toggle("dark", nextTheme === "dark");
+      localStorage.setItem("x-bookmark-ai-theme", nextTheme);
+
+      return {
+        theme: nextTheme,
+      };
+    }),
+
+  language: "tr",
   setLanguage: (lang) => set({ language: lang }),
 
   rawBookmarks: [],
@@ -79,10 +166,20 @@ export const useBookmarkStore = create<BookmarkStore>((set) => ({
   setProgress: (progress) => set({ progress }),
   errors: [],
   addError: (error) => set((s) => ({ errors: [...s.errors, error] })),
+  setErrors: (errors) => set({ errors }),
+  statusMessage: null,
+  setStatusMessage: (message) => set({ statusMessage: message }),
 
   bookmarks: [],
+  setBookmarks: (bookmarks) =>
+    set({ bookmarks: bookmarks.map(normalizeCategorizedBookmark) }),
   addBookmarks: (newBookmarks) =>
-    set((state) => ({ bookmarks: [...state.bookmarks, ...newBookmarks] })),
+    set((state) => ({
+      bookmarks: [
+        ...state.bookmarks,
+        ...newBookmarks.map(normalizeCategorizedBookmark),
+      ],
+    })),
 
   selectedCategory: null,
   setSelectedCategory: (category) => set({ selectedCategory: category }),
@@ -91,21 +188,43 @@ export const useBookmarkStore = create<BookmarkStore>((set) => ({
   sortBy: "default",
   setSortBy: (sort) => set({ sortBy: sort }),
 
+  prepareForRun: () =>
+    set(() => ({
+      status: "processing",
+      progress: {
+        currentBatch: 0,
+        totalBatches: 0,
+        processedCount: 0,
+        totalCount: 0,
+      },
+      errors: [],
+      statusMessage: null,
+      bookmarks: [],
+      selectedCategory: null,
+      searchQuery: "",
+      sortBy: "default",
+    })),
+
+  resetForReprocess: () =>
+    set(() => ({
+      status: "idle",
+      progress: {
+        currentBatch: 0,
+        totalBatches: 0,
+        processedCount: 0,
+        totalCount: 0,
+      },
+      errors: [],
+      statusMessage: null,
+      bookmarks: [],
+      selectedCategory: null,
+      searchQuery: "",
+      sortBy: "default",
+      startTime: null,
+    })),
+
   reset: () =>
     set(() => {
-      if (typeof window !== "undefined") {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key?.startsWith("x-bookmark-ai-cache-v")) {
-            keysToRemove.push(key);
-          }
-        }
-        for (const key of keysToRemove) {
-          sessionStorage.removeItem(key);
-        }
-      }
-
       return {
         rawBookmarks: [],
         fileName: null,
@@ -118,6 +237,7 @@ export const useBookmarkStore = create<BookmarkStore>((set) => ({
           totalCount: 0,
         },
         errors: [],
+        statusMessage: null,
         bookmarks: [],
         selectedCategory: null,
         searchQuery: "",
@@ -138,13 +258,14 @@ export function useCategories(): CategoryCount[] {
   return useMemo(() => {
     const counts: Record<string, number> = {};
     for (const b of bookmarks) {
-      counts[b.category] = (counts[b.category] || 0) + 1;
+      const normalizedCategory = normalizeCategory(b.category);
+      counts[normalizedCategory] = (counts[normalizedCategory] || 0) + 1;
     }
     return Object.entries(counts)
       .map(([name, count]) => ({
         name,
         count,
-        color: getCategoryColor(name),
+        color: getCategoryColor(name).text,
       }))
       .sort((a, b) => b.count - a.count);
   }, [bookmarks]);
@@ -160,7 +281,9 @@ export function useFilteredBookmarks(): CategorizedBookmark[] {
     let filtered = [...bookmarks];
 
     if (selectedCategory) {
-      filtered = filtered.filter((b) => b.category === selectedCategory);
+      filtered = filtered.filter(
+        (b) => normalizeCategory(b.category) === selectedCategory
+      );
     }
 
     if (searchQuery.trim()) {
@@ -168,14 +291,16 @@ export function useFilteredBookmarks(): CategorizedBookmark[] {
       filtered = filtered.filter(
         (b) =>
           b.summary.toLowerCase().includes(q) ||
-          b.category.toLowerCase().includes(q) ||
+          normalizeCategory(b.category).toLowerCase().includes(q) ||
           b.tags.some((t) => t.toLowerCase().includes(q)) ||
           b.tweetId.includes(q)
       );
     }
 
     if (sortBy === "category") {
-      filtered.sort((a, b) => a.category.localeCompare(b.category));
+      filtered.sort((a, b) =>
+        normalizeCategory(a.category).localeCompare(normalizeCategory(b.category))
+      );
     } else if (sortBy === "confidence") {
       const order = { high: 0, medium: 1, low: 2 };
       filtered.sort((a, b) => order[a.confidence] - order[b.confidence]);

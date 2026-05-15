@@ -1,440 +1,472 @@
 import {
-  RawBookmark,
-  CategorizedBookmark,
-  BatchResult,
-  ProcessingProgress,
-  Language,
-} from "./types";
+  buildBatchUserPrompt,
+  buildCategorizedResults,
+  CATEGORIZATION_SYSTEM_PROMPT,
+  estimateModelCost,
+  getModelOption,
+  parseJsonArrayResponse,
+} from "./ai";
 import { buildTweetUrl } from "./parser";
+import {
+  BatchResult,
+  CategorizedBookmark,
+  Language,
+  ProcessingEstimate,
+  ProcessingProgress,
+  RawBookmark,
+  SupportedModelId,
+} from "./types";
 
 const BATCH_SIZE = 25;
-const CACHE_KEY_PREFIX = "x-bookmark-ai-cache-v2";
+const CACHE_KEY = "bookmark_cache_v1";
+const LEGACY_CACHE_KEYS = ["bookmark_cache_v2", "bookmark_cache_v3"] as const;
+const DEFAULT_DELAY_MS = 300;
+const RATE_LIMIT_WAIT_MS = 5000;
+const MAX_RETRIES = 3;
 
-type LocalRule = {
-  category: string;
-  keywords: string[];
-  tags: {
-    en: string[];
-    tr: string[];
-  };
+export const CATEGORY_NORMALIZE: Record<string, string> = {
+  "AI & Machine Learning": "Yapay Zeka & Makine Öğrenimi",
+  "Web Development": "Web Geliştirme",
+  Design: "Tasarım",
+  Education: "Eğitim",
+  Career: "Kariyer",
+  Finance: "Finans",
+  Science: "Bilim",
+  Business: "İş Dünyası",
+  Health: "Sağlık",
+  Entertainment: "Eğlence",
+  Politics: "Politika",
+  Other: "Diğer",
+  "Finans & Yatırım": "Finans",
+  "Yapay Zeka ve Makine Öğrenimi": "Yapay Zeka & Makine Öğrenimi",
 };
 
-const LOCAL_RULES: LocalRule[] = [
-  {
-    category: "AI & Machine Learning",
-    keywords: [
-      "ai",
-      "llm",
-      "gpt",
-      "claude",
-      "anthropic",
-      "openai",
-      "machine learning",
-      "deep learning",
-      "neural",
-      "prompt",
-    ],
-    tags: {
-      en: ["AI", "LLM", "MachineLearning"],
-      tr: ["yapay-zeka", "llm", "makine-ogrenimi"],
-    },
-  },
-  {
-    category: "Programming",
-    keywords: [
-      "python",
-      "javascript",
-      "typescript",
-      "rust",
-      "go",
-      "java",
-      "repo",
-      "github",
-      "code",
-      "coding",
-      "algorithm",
-      "api",
-    ],
-    tags: {
-      en: ["Programming", "Code", "Dev"],
-      tr: ["programlama", "kod", "yazilim"],
-    },
-  },
-  {
-    category: "Web Development",
-    keywords: [
-      "next.js",
-      "react",
-      "frontend",
-      "backend",
-      "css",
-      "tailwind",
-      "node",
-      "web app",
-      "html",
-    ],
-    tags: {
-      en: ["WebDev", "Frontend", "Backend"],
-      tr: ["web-gelistirme", "frontend", "backend"],
-    },
-  },
-  {
-    category: "Design",
-    keywords: [
-      "design",
-      "ux",
-      "ui",
-      "figma",
-      "typography",
-      "branding",
-      "layout",
-      "visual",
-    ],
-    tags: {
-      en: ["Design", "UX", "UI"],
-      tr: ["tasarim", "ux", "ui"],
-    },
-  },
-  {
-    category: "Finance & Investing",
-    keywords: [
-      "stock",
-      "invest",
-      "market",
-      "portfolio",
-      "etf",
-      "finance",
-      "economy",
-      "trading",
-      "earnings",
-    ],
-    tags: {
-      en: ["Finance", "Investing", "Markets"],
-      tr: ["finans", "yatirim", "piyasalar"],
-    },
-  },
-  {
-    category: "Crypto",
-    keywords: [
-      "bitcoin",
-      "btc",
-      "ethereum",
-      "eth",
-      "crypto",
-      "blockchain",
-      "defi",
-      "token",
-      "web3",
-    ],
-    tags: {
-      en: ["Crypto", "Blockchain", "Web3"],
-      tr: ["kripto", "blockchain", "web3"],
-    },
-  },
-  {
-    category: "Business",
-    keywords: [
-      "startup",
-      "saas",
-      "founder",
-      "growth",
-      "product",
-      "strategy",
-      "b2b",
-      "revenue",
-      "sales",
-    ],
-    tags: {
-      en: ["Business", "Startup", "Strategy"],
-      tr: ["is", "girisim", "strateji"],
-    },
-  },
-  {
-    category: "Politics",
-    keywords: [
-      "election",
-      "senate",
-      "parliament",
-      "minister",
-      "president",
-      "policy",
-      "government",
-      "law",
-      "campaign",
-      "congress",
-    ],
-    tags: {
-      en: ["Politics", "Policy", "Government"],
-      tr: ["siyaset", "politika", "hukumet"],
-    },
-  },
-  {
-    category: "Health",
-    keywords: [
-      "health",
-      "medical",
-      "doctor",
-      "disease",
-      "fitness",
-      "nutrition",
-      "mental health",
-    ],
-    tags: {
-      en: ["Health", "Wellness", "Medicine"],
-      tr: ["saglik", "wellness", "tip"],
-    },
-  },
-  {
-    category: "Science",
-    keywords: [
-      "science",
-      "research",
-      "paper",
-      "physics",
-      "biology",
-      "chemistry",
-      "study",
-      "experiment",
-    ],
-    tags: {
-      en: ["Science", "Research", "Study"],
-      tr: ["bilim", "arastirma", "calisma"],
-    },
-  },
-];
+type ProcessBatchesOptions = {
+  rawBookmarks: RawBookmark[];
+  selectedModel: SupportedModelId;
+  apiKey?: string;
+  ollamaModel?: string;
+  language: Language;
+  onBatchComplete: (results: CategorizedBookmark[]) => void;
+  onProgress: (progress: ProcessingProgress) => void;
+  onError: (error: string, batchIndex: number) => void;
+  onStatusMessage?: (message: string | null) => void;
+};
 
-function chunk<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
+export type ProcessBatchesResult = {
+  results: CategorizedBookmark[];
+  cachedCount: number;
+  toProcessCount: number;
+  failedBatches: number;
+};
+
+export function normalizeCategory(category: string): string {
+  return CATEGORY_NORMALIZE[category] ?? category;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function cacheKeyForLanguage(language: Language): string {
-  return `${CACHE_KEY_PREFIX}-${language}`;
-}
-
-function loadCache(language: Language): Record<string, CategorizedBookmark> {
-  if (typeof window === "undefined") return {};
-
-  try {
-    const raw = sessionStorage.getItem(cacheKeyForLanguage(language));
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, CategorizedBookmark>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveCache(
-  language: Language,
-  cache: Record<string, CategorizedBookmark>
-): void {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(cacheKeyForLanguage(language), JSON.stringify(cache));
-  } catch {
-    // Ignore storage errors (quota/private mode), app can still proceed.
-  }
-}
-
-function buildLocalSummary(category: string, language: Language): string {
-  if (language === "tr") {
-    return `Bu içerik, yer imi metnine göre büyük olasılıkla ${category.toLowerCase()} kategorisiyle ilgili.`;
-  }
-
-  return `Likely related to ${category.toLowerCase()} based on the bookmark text.`;
-}
-
-function localTagsForLanguage(rule: LocalRule, language: Language): string[] {
-  if (language === "tr") {
-    return rule.tags.tr;
-  }
-  return rule.tags.en;
-}
-
-function tryLocalCategorization(
-  bookmark: RawBookmark,
-  language: Language
-): CategorizedBookmark | null {
-  if (!bookmark.text) return null;
-
-  const text = bookmark.text.toLowerCase();
-  let bestRule: LocalRule | null = null;
-  let bestScore = 0;
-  let secondBest = 0;
-
-  for (const rule of LOCAL_RULES) {
-    let score = 0;
-    for (const keyword of rule.keywords) {
-      if (text.includes(keyword)) score += 1;
-    }
-
-    if (score > bestScore) {
-      secondBest = bestScore;
-      bestScore = score;
-      bestRule = rule;
-    } else if (score > secondBest) {
-      secondBest = score;
-    }
-  }
-
-  // Require stronger signal to avoid overconfident wrong local classifications.
-  if (!bestRule || bestScore < 2 || bestScore - secondBest < 1) {
-    return null;
-  }
-
+export function normalizeCategorizedBookmark(
+  bookmark: CategorizedBookmark
+): CategorizedBookmark {
   return {
-    tweetId: bookmark.tweetId,
+    ...bookmark,
     url: bookmark.url || buildTweetUrl(bookmark.tweetId),
-    category: bestRule.category,
-    summary: buildLocalSummary(bestRule.category, language),
-    tags: localTagsForLanguage(bestRule, language),
-    confidence: bestScore >= 4 ? "high" : "medium",
+    category: normalizeCategory(bookmark.category),
+    summary: bookmark.summary.trim(),
+    tags: Array.isArray(bookmark.tags)
+      ? bookmark.tags
+          .filter((tag): tag is string => typeof tag === "string")
+          .map((tag) => tag.replace(/^#/, "").trim())
+          .filter(Boolean)
+          .slice(0, 4)
+      : [],
+    confidence:
+      bookmark.confidence === "high" ||
+      bookmark.confidence === "medium" ||
+      bookmark.confidence === "low"
+        ? bookmark.confidence
+        : "medium",
   };
 }
 
-export async function processBatches(
+export function clearBookmarkCache(): void {
+  if (typeof window === "undefined") return;
+
+  [CACHE_KEY, ...LEGACY_CACHE_KEYS].forEach((key) => {
+    localStorage.removeItem(key);
+  });
+}
+
+export function getProcessingEstimate(
   rawBookmarks: RawBookmark[],
-  apiKey: string,
-  language: Language,
-  onBatchComplete: (results: CategorizedBookmark[]) => void,
-  onProgress: (progress: ProcessingProgress) => void,
-  onError: (error: string, batchIndex: number) => void
-): Promise<CategorizedBookmark[]> {
-  const uniqueBookmarks = Array.from(
-    new Map(rawBookmarks.map((b) => [b.tweetId, b])).values()
-  );
-  const duplicateCount = rawBookmarks.length - uniqueBookmarks.length;
+  selectedModel: SupportedModelId
+): ProcessingEstimate {
+  const uniqueBookmarks = dedupeBookmarks(rawBookmarks);
+  const cachedCount = uniqueBookmarks.filter((bookmark) =>
+    Boolean(getCached(bookmark.tweetId))
+  ).length;
+  const toProcessCount = uniqueBookmarks.length - cachedCount;
+  const estimatedApiCalls = Math.ceil(toProcessCount / BATCH_SIZE);
+  const estimatedCost = estimateModelCost(toProcessCount, selectedModel);
 
-  const cache = loadCache(language);
-  const cachedResults: CategorizedBookmark[] = [];
-  const localResults: CategorizedBookmark[] = [];
-  const toProcess: RawBookmark[] = [];
+  return {
+    totalBookmarks: uniqueBookmarks.length,
+    cachedCount,
+    toProcessCount,
+    estimatedApiCalls,
+    estimatedCost: estimatedCost.amount,
+    estimatedCostLabel: estimatedCost.label,
+  };
+}
 
-  for (const bookmark of uniqueBookmarks) {
-    const cached = cache[bookmark.tweetId];
-    if (cached) {
-      cachedResults.push(cached);
-      continue;
-    }
+export function getCachedBookmarks(
+  rawBookmarks: RawBookmark[]
+): CategorizedBookmark[] {
+  const uniqueBookmarks = dedupeBookmarks(rawBookmarks);
 
-    const local = tryLocalCategorization(bookmark, language);
-    if (local) {
-      localResults.push(local);
-      cache[bookmark.tweetId] = local;
-      continue;
-    }
+  return uniqueBookmarks
+    .map((bookmark) => getCached(bookmark.tweetId))
+    .filter((bookmark): bookmark is CategorizedBookmark => Boolean(bookmark));
+}
 
-    toProcess.push(bookmark);
+export async function processBatches({
+  rawBookmarks,
+  selectedModel,
+  apiKey,
+  ollamaModel,
+  language,
+  onBatchComplete,
+  onProgress,
+  onError,
+  onStatusMessage,
+}: ProcessBatchesOptions): Promise<ProcessBatchesResult> {
+  const option = getModelOption(selectedModel);
+
+  if (option.requiresApiKey && !apiKey?.trim()) {
+    throw new Error(`${option.label} API key is required.`);
   }
 
+  if (option.provider === "ollama" && !ollamaModel?.trim()) {
+    throw new Error("Please enter an Ollama model name.");
+  }
+
+  const uniqueBookmarks = dedupeBookmarks(rawBookmarks);
+  const cachedResults = getCachedBookmarks(uniqueBookmarks);
+  const cachedIds = new Set(cachedResults.map((bookmark) => bookmark.tweetId));
+  const toProcess = uniqueBookmarks.filter(
+    (bookmark) => !cachedIds.has(bookmark.tweetId)
+  );
+
   const batches = chunk(toProcess, BATCH_SIZE);
-  const allResults: CategorizedBookmark[] = [];
-  let processedCount = duplicateCount;
+  const allResults = [...cachedResults];
+  let processedCount = cachedResults.length;
+  let failedBatches = 0;
 
   if (cachedResults.length > 0) {
-    allResults.push(...cachedResults);
-    processedCount += cachedResults.length;
     onBatchComplete(cachedResults);
   }
 
-  if (localResults.length > 0) {
-    allResults.push(...localResults);
-    processedCount += localResults.length;
-    onBatchComplete(localResults);
-  }
-
+  onStatusMessage?.(
+    `${cachedResults.length} from cache, ${toProcess.length} new to process.`
+  );
   onProgress({
     currentBatch: batches.length > 0 ? 1 : 0,
     totalBatches: batches.length,
     processedCount,
-    totalCount: rawBookmarks.length,
+    totalCount: uniqueBookmarks.length,
   });
 
-  for (let i = 0; i < batches.length; i++) {
-    onProgress({
-      currentBatch: i + 1,
-      totalBatches: batches.length,
-      processedCount,
-      totalCount: rawBookmarks.length,
-    });
-
-    const items = batches[i].map((b) => ({
-      tweetId: b.tweetId,
-      url: b.url || buildTweetUrl(b.tweetId),
-      text: b.text,
-      user: b.user,
+  for (let index = 0; index < batches.length; index += 1) {
+    const batch = batches[index];
+    const items = batch.map((bookmark) => ({
+      tweetId: bookmark.tweetId,
+      user: bookmark.user,
+      url: bookmark.url || buildTweetUrl(bookmark.tweetId),
+      text: bookmark.text,
     }));
 
-    let retries = 0;
-    const maxRetries = 3;
-    let success = false;
+    onProgress({
+      currentBatch: index + 1,
+      totalBatches: batches.length,
+      processedCount,
+      totalCount: uniqueBookmarks.length,
+    });
 
-    while (retries < maxRetries && !success) {
+    let completed = false;
+
+    for (let attempt = 0; attempt < MAX_RETRIES && !completed; attempt += 1) {
       try {
-        const response = await fetch("/api/categorize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items,
-            apiKey,
-            language,
-          }),
-        });
+        const batchResults =
+          option.provider === "ollama"
+            ? await requestOllamaBatch(items, ollamaModel!.trim())
+            : await requestHostedBatch(
+                items,
+                selectedModel,
+                apiKey!.trim(),
+                language
+              );
 
-        if (response.status === 429) {
-          const waitTime = Math.pow(2, retries) * 2000;
-          await sleep(waitTime);
-          retries++;
+        setCache(batchResults);
+        allResults.push(...batchResults);
+        processedCount += batchResults.length;
+        onBatchComplete(batchResults);
+        onProgress({
+          currentBatch: index + 1,
+          totalBatches: batches.length,
+          processedCount,
+          totalCount: uniqueBookmarks.length,
+        });
+        onStatusMessage?.(null);
+        completed = true;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown processing error";
+        const rateLimited = isRateLimitError(error);
+
+        if (rateLimited && attempt < MAX_RETRIES - 1) {
+          onStatusMessage?.("Rate limit hit, waiting 5s...");
+          await sleep(RATE_LIMIT_WAIT_MS);
           continue;
         }
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error || `API request failed with status ${response.status}`
+        if (!rateLimited && attempt < MAX_RETRIES - 1) {
+          const retryDelay = Math.pow(2, attempt + 1) * 1000;
+          onStatusMessage?.(
+            `Retrying batch ${index + 1} in ${retryDelay / 1000}s...`
           );
+          await sleep(retryDelay);
+          continue;
         }
 
-        const data: BatchResult = await response.json();
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        allResults.push(...data.results);
-        for (const result of data.results) {
-          cache[result.tweetId] = result;
-        }
-        processedCount += batches[i].length;
-        onBatchComplete(data.results);
-        success = true;
-      } catch (error) {
-        retries++;
-        if (retries >= maxRetries) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error";
-          onError(`Batch ${i + 1} failed: ${message}`, i);
-          processedCount += batches[i].length;
-        } else {
-          await sleep(Math.pow(2, retries) * 1000);
-        }
+        failedBatches += 1;
+        processedCount += batch.length;
+        onError(`Batch ${index + 1} failed: ${message}`, index);
+        onProgress({
+          currentBatch: index + 1,
+          totalBatches: batches.length,
+          processedCount,
+          totalCount: uniqueBookmarks.length,
+        });
       }
     }
 
-    if (i < batches.length - 1) {
-      await sleep(500);
+    if (index < batches.length - 1) {
+      await sleep(DEFAULT_DELAY_MS);
     }
   }
 
-  saveCache(language, cache);
+  onStatusMessage?.(
+    failedBatches > 0 ? `${failedBatches} batch failed during processing.` : null
+  );
 
-  return allResults;
+  return {
+    results: allResults,
+    cachedCount: cachedResults.length,
+    toProcessCount: toProcess.length,
+    failedBatches,
+  };
+}
+
+function getCached(
+  tweetId: string
+): CategorizedBookmark | null {
+  if (typeof window === "undefined") return null;
+
+  const cache = loadCache();
+  return cache[getCacheEntryKey(tweetId)] || null;
+}
+
+function setCache(results: CategorizedBookmark[]): void {
+  if (typeof window === "undefined") return;
+
+  const cache = loadCache();
+  results.forEach((result) => {
+    const normalized = normalizeCategorizedBookmark(result);
+    cache[getCacheEntryKey(normalized.tweetId)] = normalized;
+  });
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}
+
+function loadCache(): Record<string, CategorizedBookmark> {
+  if (typeof window === "undefined") return {};
+
+  const cache: Record<string, CategorizedBookmark> = {};
+
+  for (const storageKey of [CACHE_KEY, ...LEGACY_CACHE_KEYS]) {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== "object") continue;
+
+      Object.entries(parsed).forEach(([entryKey, value]) => {
+        const normalized = coerceCacheEntry(entryKey, value);
+        if (normalized) {
+          cache[getCacheEntryKey(normalized.tweetId)] = normalized;
+        }
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return cache;
+}
+
+async function requestHostedBatch(
+  items: Array<{ tweetId: string; url: string; text?: string; user?: string }>,
+  selectedModel: SupportedModelId,
+  apiKey: string,
+  language: Language
+): Promise<CategorizedBookmark[]> {
+  const option = getModelOption(selectedModel);
+  const response = await fetch("/api/categorize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      items,
+      provider: option.provider,
+      model: option.apiModel,
+      apiKey,
+      language,
+    }),
+  });
+
+  if (response.status === 429) {
+    throw createRateLimitError();
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `API request failed with status ${response.status}`
+    );
+  }
+
+  const data = (await response.json()) as BatchResult;
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data.results.map(normalizeCategorizedBookmark);
+}
+
+async function requestOllamaBatch(
+  items: Array<{ tweetId: string; url: string; text?: string; user?: string }>,
+  ollamaModel: string
+): Promise<CategorizedBookmark[]> {
+  const response = await fetch("http://localhost:11434/api/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: ollamaModel,
+      system: CATEGORIZATION_SYSTEM_PROMPT,
+      prompt: buildBatchUserPrompt(items),
+      options: {
+        temperature: 0.3,
+      },
+      stream: false,
+    }),
+  });
+
+  if (response.status === 429) {
+    throw createRateLimitError();
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Ollama request failed.");
+  }
+
+  const data = (await response.json()) as { response?: string };
+  if (!data.response) {
+    throw new Error("Ollama returned an empty response.");
+  }
+
+  const parsedResults = parseJsonArrayResponse(data.response);
+  return buildCategorizedResults(parsedResults, items).map(normalizeCategorizedBookmark);
+}
+
+function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < array.length; index += size) {
+    chunks.push(array.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function dedupeBookmarks(rawBookmarks: RawBookmark[]): RawBookmark[] {
+  return Array.from(
+    new Map(rawBookmarks.map((bookmark) => [bookmark.tweetId, bookmark])).values()
+  );
+}
+
+function getCacheEntryKey(tweetId: string): string {
+  return tweetId;
+}
+
+function coerceCacheEntry(
+  entryKey: string,
+  value: unknown
+): CategorizedBookmark | null {
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Partial<CategorizedBookmark>;
+  const tweetId =
+    typeof record.tweetId === "string" && record.tweetId.trim().length > 0
+      ? record.tweetId
+      : extractTweetIdFromCacheKey(entryKey);
+
+  if (!tweetId) return null;
+
+  return normalizeCategorizedBookmark({
+    tweetId,
+    url:
+      typeof record.url === "string" && record.url.trim().length > 0
+        ? record.url
+        : buildTweetUrl(tweetId),
+    category:
+      typeof record.category === "string" && record.category.trim().length > 0
+        ? record.category
+        : "Diğer",
+    summary:
+      typeof record.summary === "string" && record.summary.trim().length > 0
+        ? record.summary
+        : "Bu yer imi icin onbellekte kullanilabilir bir ozet bulunamadi.",
+    tags: Array.isArray(record.tags) ? record.tags : [],
+    confidence:
+      record.confidence === "high" ||
+      record.confidence === "medium" ||
+      record.confidence === "low"
+        ? record.confidence
+        : "medium",
+  });
+}
+
+function extractTweetIdFromCacheKey(entryKey: string): string {
+  const parts = entryKey.split(":");
+  return parts[parts.length - 1]?.trim() || "";
+}
+
+function createRateLimitError(): Error {
+  const error = new Error("Rate limit exceeded.");
+  (error as Error & { code?: number }).code = 429;
+  return error;
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.toLowerCase().includes("rate limit") ||
+      (error as Error & { code?: number }).code === 429)
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -9,21 +9,21 @@ const steps = [
     step: "01",
     title: "Export Your X Data",
     description:
-      "Go to X Settings → Download an archive of your data. You'll receive a ZIP file containing your bookmarks.",
+      "Go to X Settings and request your archive. You will receive a ZIP file containing your bookmarks.",
   },
   {
     icon: Upload,
     step: "02",
     title: "Upload bookmarks.js",
     description:
-      "Extract the ZIP and find the bookmarks.js file in the /data folder. Drag and drop it into the app.",
+      "Extract the archive, open the data folder, and drag the bookmarks file into the app.",
   },
   {
     icon: Zap,
     step: "03",
-    title: "AI Categorizes Instantly",
+    title: "Review AI Results",
     description:
-      "Claude AI analyzes each bookmark and categorizes them with tags, summaries, and confidence scores.",
+      "The app batches your bookmarks, reuses cache when possible, and returns organized summaries you can filter or export.",
   },
 ];
 
@@ -42,21 +42,20 @@ const item = {
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-32 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section id="how-it-works" className="px-6 py-28">
+      <div className="mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="mb-16 text-center"
         >
-          <h2 className="font-display text-4xl md:text-5xl font-bold">
+          <h2 className="font-display text-4xl font-bold text-text-primary md:text-5xl">
             How It <span className="gradient-text">Works</span>
           </h2>
-          <p className="mt-4 text-text-muted text-lg max-w-xl mx-auto">
-            Three simple steps to transform your chaotic bookmarks into an
-            organized knowledge base.
+          <p className="mx-auto mt-4 max-w-xl text-lg text-text-secondary">
+            Three steps from export file to a tidy bookmark library.
           </p>
         </motion.div>
 
@@ -65,28 +64,24 @@ export default function HowItWorks() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="grid md:grid-cols-3 gap-8"
+          className="grid gap-8 md:grid-cols-3"
         >
-          {steps.map((s) => (
-            <motion.div
-              key={s.step}
-              variants={item}
-              className="relative group"
-            >
-              <div className="p-8 rounded-2xl bg-surface border border-border hover:border-accent/30 transition-all duration-300 h-full">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                    <s.icon className="w-6 h-6 text-accent" />
+          {steps.map((step) => (
+            <motion.div key={step.step} variants={item} className="relative">
+              <div className="soft-shadow h-full rounded-3xl border border-border bg-card p-8 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--text-muted)]">
+                <div className="mb-4 flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-badge">
+                    <step.icon className="h-6 w-6 text-text-muted" />
                   </div>
-                  <span className="text-text-muted/40 font-display text-3xl font-bold">
-                    {s.step}
+                  <span className="font-display text-3xl font-bold text-text-muted">
+                    {step.step}
                   </span>
                 </div>
-                <h3 className="font-display text-xl font-semibold text-text-primary mb-2">
-                  {s.title}
+                <h3 className="mb-2 font-display text-xl font-semibold text-text-primary">
+                  {step.title}
                 </h3>
-                <p className="text-text-muted leading-relaxed">
-                  {s.description}
+                <p className="leading-relaxed text-text-secondary">
+                  {step.description}
                 </p>
               </div>
             </motion.div>

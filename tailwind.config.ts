@@ -10,20 +10,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0A0A0F",
-        surface: "#12121A",
-        border: "#1E1E2E",
-        accent: {
-          DEFAULT: "#00D4AA",
-          light: "#00FFD0",
-          dark: "#00A886",
-        },
-        "text-primary": "#F0F0F5",
-        "text-muted": "#6E6E8A",
+        background: "var(--bg-primary)",
+        surface: "var(--bg-surface)",
+        card: "var(--bg-card)",
+        border: "var(--border-default)",
+        badge: "var(--badge-bg)",
+        "text-primary": "var(--text-primary)",
+        "text-secondary": "var(--text-secondary)",
+        "text-muted": "var(--text-muted)",
+        "tag-bg": "var(--tag-bg)",
+        "tag-text": "var(--tag-text)",
+        cta: "var(--cta-bg)",
+        "cta-text": "var(--cta-text)",
+        link: "var(--link-color)",
       },
       fontFamily: {
-        display: ["var(--font-syne)", "sans-serif"],
-        body: ["var(--font-dm-sans)", "sans-serif"],
+        sans: ["Google Sans", "sans-serif"],
+        display: ["Google Sans Display", "sans-serif"],
       },
       keyframes: {
         "fade-in": {
@@ -40,7 +43,7 @@ const config: Config = {
         },
         pulse: {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.5" },
+          "50%": { opacity: "0.55" },
         },
       },
       animation: {
@@ -53,4 +56,5 @@ const config: Config = {
   },
   plugins: [require("tailwindcss-animate")],
 };
+
 export default config;

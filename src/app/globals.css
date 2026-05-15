@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-primary: #f7f8fa;
+  --bg-surface: #edeef2;
+  --bg-card: #ffffff;
+  --border-default: #e0e2ea;
+  --badge-bg: #e8eaf4;
+  --text-primary: #1a1d2e;
+  --text-secondary: #2d3250;
+  --text-muted: #5b6099;
+  --tag-bg: #f0f1f7;
+  --tag-text: #5b6099;
+  --cta-bg: #1a1d2e;
+  --cta-text: #ffffff;
+  --link-color: #5b6099;
+}
+
+.dark {
+  --bg-primary: #0f1016;
+  --bg-surface: #14162a;
+  --bg-card: #1a1c2e;
+  --border-default: #2d3250;
+  --badge-bg: #252842;
+  --text-primary: #e8eaf4;
+  --text-secondary: #9aa0cc;
+  --text-muted: #7a80aa;
+  --tag-bg: #1e2038;
+  --tag-text: #7a80aa;
+  --cta-bg: #e8eaf4;
+  --cta-text: #1a1d2e;
+  --link-color: #7a80aa;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,52 +42,80 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--bg-primary);
 }
 
 body {
-  background-color: #0A0A0F;
-  color: #F0F0F5;
-  font-family: var(--font-dm-sans), sans-serif;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Google Sans", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+a,
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0F;
+  background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E1E2E;
-  border-radius: 3px;
+  background: var(--border-default);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E2E3E;
+  background: var(--text-muted);
 }
 
 ::selection {
-  background-color: rgba(0, 212, 170, 0.3);
-  color: #F0F0F5;
+  background-color: var(--badge-bg);
+  color: var(--text-primary);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Google Sans Display", sans-serif;
+  }
 }
 
 @layer utilities {
   .gradient-text {
-    @apply bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      120deg,
+      var(--text-primary),
+      var(--text-secondary)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
-  .glass {
-    @apply bg-surface/80 backdrop-blur-xl border border-border;
+  .surface-ring {
+    box-shadow: 0 0 0 1px var(--border-default);
   }
 
-  .glow {
-    box-shadow: 0 0 20px rgba(0, 212, 170, 0.15);
+  .soft-shadow {
+    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
   }
 
-  .glow-strong {
-    box-shadow: 0 0 40px rgba(0, 212, 170, 0.25);
+  .dark .soft-shadow {
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
   }
 }

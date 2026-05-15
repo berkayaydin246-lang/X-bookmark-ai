@@ -8,22 +8,22 @@ export default function SkeletonCard({ index }: { index: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="p-5 rounded-xl bg-surface border border-border"
+      className="soft-shadow rounded-[12px] border border-border bg-card p-4"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="h-6 w-28 rounded-md bg-border animate-pulse" />
-        <div className="h-5 w-14 rounded-full bg-border animate-pulse" />
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-6 w-28 animate-pulse rounded-full bg-badge" />
+        <div className="h-5 w-14 animate-pulse rounded-full bg-badge" />
       </div>
-      <div className="space-y-2 mb-3">
-        <div className="h-4 w-full rounded bg-border animate-pulse" />
-        <div className="h-4 w-3/4 rounded bg-border animate-pulse" />
+      <div className="mb-3 space-y-2">
+        <div className="h-4 w-full animate-pulse rounded bg-tag-bg" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-tag-bg" />
       </div>
-      <div className="flex gap-2 mb-4">
-        <div className="h-5 w-20 rounded-md bg-border animate-pulse" />
-        <div className="h-5 w-16 rounded-md bg-border animate-pulse" />
-        <div className="h-5 w-24 rounded-md bg-border animate-pulse" />
+      <div className="mb-4 flex gap-2">
+        <div className="h-5 w-20 animate-pulse rounded-md bg-tag-bg" />
+        <div className="h-5 w-16 animate-pulse rounded-md bg-tag-bg" />
+        <div className="h-5 w-24 animate-pulse rounded-md bg-tag-bg" />
       </div>
-      <div className="h-4 w-24 rounded bg-border animate-pulse" />
+      <div className="h-4 w-24 animate-pulse rounded bg-tag-bg" />
     </motion.div>
   );
 }

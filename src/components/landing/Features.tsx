@@ -1,51 +1,44 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Brain,
-  Zap,
-  Shield,
-  Tags,
-  Search,
-  FileDown,
-} from "lucide-react";
+import { Brain, FileDown, Search, Shield, Tags, Zap } from "lucide-react";
 
 const features = [
   {
     icon: Brain,
     title: "AI-Powered Categorization",
     description:
-      "Claude AI intelligently groups your bookmarks into meaningful categories like AI, Design, Finance, and more.",
+      "Choose hosted or local models and let them turn bookmarks into readable, specific summaries.",
   },
   {
     icon: Zap,
-    title: "500+ Bookmarks in Seconds",
+    title: "Efficient Batch Runs",
     description:
-      "Batch processing handles hundreds of bookmarks efficiently, showing results as they stream in.",
+      "Bookmarks are processed in larger batches to cut request count and reduce overall cost.",
   },
   {
     icon: Shield,
-    title: "Privacy First",
+    title: "Theme and Privacy Friendly",
     description:
-      "Your data never leaves your browser except for the Anthropic API call. No database, no storage, no tracking.",
+      "Your dashboard now adapts to light or dark mode while keeping data in-browser except model requests.",
   },
   {
     icon: Tags,
-    title: "Smart Auto-Tagging",
+    title: "Turkish-First Output",
     description:
-      "Each bookmark gets 2-3 relevant tags like #MachineLearning, #WebDev, or #Startup for easy discovery.",
+      "Categories, tags, and summaries are generated in Turkish so the whole library stays consistent and easy to scan.",
   },
   {
     icon: Search,
-    title: "Full-Text Search",
+    title: "Focused Search",
     description:
-      "Instantly search across all bookmarks by category, tags, summary, or tweet ID.",
+      "Filter by category, confidence, summary, or tags without losing context inside the dashboard.",
   },
   {
     icon: FileDown,
-    title: "Export to JSON / CSV",
+    title: "Export Anywhere",
     description:
-      "Download your categorized bookmarks as structured JSON or CSV files for use anywhere.",
+      "Download your categorized bookmarks as JSON or CSV whenever you want to reuse them elsewhere.",
   },
 ];
 
@@ -64,22 +57,22 @@ const item = {
 
 export default function Features() {
   return (
-    <section className="py-32 px-6 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-accent/[0.02] to-transparent" />
+    <section className="relative px-6 py-28">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--badge-bg)]/30 to-transparent" />
 
-      <div className="max-w-6xl mx-auto relative">
+      <div className="relative mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="mb-16 text-center"
         >
-          <h2 className="font-display text-4xl md:text-5xl font-bold">
+          <h2 className="font-display text-4xl font-bold text-text-primary md:text-5xl">
             Everything You <span className="gradient-text">Need</span>
           </h2>
-          <p className="mt-4 text-text-muted text-lg max-w-xl mx-auto">
-            Powerful features wrapped in a simple, beautiful interface.
+          <p className="mx-auto mt-4 max-w-xl text-lg text-text-secondary">
+            A cleaner visual system wrapped around the same bookmark workflow.
           </p>
         </motion.div>
 
@@ -88,22 +81,22 @@ export default function Features() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
-          {features.map((f) => (
+          {features.map((feature) => (
             <motion.div
-              key={f.title}
+              key={feature.title}
               variants={item}
-              className="group p-6 rounded-2xl bg-surface/50 border border-border hover:border-accent/20 transition-all duration-300 hover:shadow-lg hover:shadow-accent/5"
+              className="soft-shadow rounded-3xl border border-border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--text-muted)]"
             >
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                <f.icon className="w-5 h-5 text-accent" />
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-badge">
+                <feature.icon className="h-5 w-5 text-text-muted" />
               </div>
-              <h3 className="font-display text-lg font-semibold text-text-primary mb-2">
-                {f.title}
+              <h3 className="mb-2 font-display text-lg font-semibold text-text-primary">
+                {feature.title}
               </h3>
-              <p className="text-text-muted text-sm leading-relaxed">
-                {f.description}
+              <p className="text-sm leading-relaxed text-text-secondary">
+                {feature.description}
               </p>
             </motion.div>
           ))}

@@ -1,16 +1,22 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, CheckCircle, X } from "lucide-react";
-import { useBookmarkStore } from "@/store/useBookmarkStore";
-import { parseBookmarksFile } from "@/lib/parser";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckCircle, FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { parseBookmarksFile } from "@/lib/parser";
+import { useBookmarkStore } from "@/store/useBookmarkStore";
 
 export default function FileUploader() {
   const [isDragging, setIsDragging] = useState(false);
-  const { setRawBookmarks, setFileInfo, setStatus, fileName, fileSize, rawBookmarks } =
-    useBookmarkStore();
+  const {
+    setRawBookmarks,
+    setFileInfo,
+    setStatus,
+    fileName,
+    fileSize,
+    rawBookmarks,
+  } = useBookmarkStore();
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -35,22 +41,22 @@ export default function FileUploader() {
         setStatus("error");
       }
     },
-    [setRawBookmarks, setFileInfo, setStatus]
+    [setFileInfo, setRawBookmarks, setStatus]
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
+    (event: React.DragEvent) => {
+      event.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
+      const file = event.dataTransfer.files[0];
       if (file) handleFile(file);
     },
     [handleFile]
   );
 
   const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
       if (file) handleFile(file);
     },
     [handleFile]
@@ -63,7 +69,7 @@ export default function FileUploader() {
   const hasFile = rawBookmarks.length > 0;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="mx-auto w-full max-w-2xl">
       <AnimatePresence mode="wait">
         {!hasFile ? (
           <motion.div
@@ -73,16 +79,16 @@ export default function FileUploader() {
             exit={{ opacity: 0, y: -10 }}
           >
             <label
-              onDragOver={(e) => {
-                e.preventDefault();
+              onDragOver={(event) => {
+                event.preventDefault();
                 setIsDragging(true);
               }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
-              className={`relative flex flex-col items-center justify-center w-full h-64 rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer ${
+              className={`soft-shadow relative flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-card transition-all duration-300 ${
                 isDragging
-                  ? "border-accent bg-accent/5 scale-[1.02]"
-                  : "border-border hover:border-accent/40 hover:bg-surface/50"
+                  ? "border-[var(--text-muted)] bg-surface"
+                  : "border-border hover:border-[var(--text-muted)] hover:bg-surface"
               }`}
             >
               <input
@@ -92,16 +98,16 @@ export default function FileUploader() {
                 onChange={handleFileInput}
               />
               <motion.div
-                animate={isDragging ? { scale: 1.1 } : { scale: 1 }}
-                className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4"
+                animate={isDragging ? { scale: 1.08 } : { scale: 1 }}
+                className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-badge"
               >
-                <Upload className="w-8 h-8 text-accent" />
+                <Upload className="h-8 w-8 text-text-muted" />
               </motion.div>
-              <p className="font-display text-lg font-semibold text-text-primary mb-1">
+              <p className="mb-1 font-display text-lg font-semibold text-text-primary">
                 Drop your bookmarks file here
               </p>
-              <p className="text-text-muted text-sm">
-                Supports .js and .json — or click to browse
+              <p className="text-sm text-text-secondary">
+                Supports .js and .json, or click to browse
               </p>
             </label>
           </motion.div>
@@ -111,37 +117,37 @@ export default function FileUploader() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-6 rounded-2xl bg-surface border border-border"
+            className="soft-shadow rounded-3xl border border-border bg-card p-6"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-accent" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-badge">
+                  <FileText className="h-6 w-6 text-text-muted" />
                 </div>
                 <div>
                   <p className="font-medium text-text-primary">{fileName}</p>
-                  <p className="text-text-muted text-sm">
+                  <p className="text-sm text-text-secondary">
                     {fileSize ? `${(fileSize / 1024).toFixed(1)} KB` : ""} •{" "}
                     {rawBookmarks.length} bookmarks found
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-accent" />
+                <CheckCircle className="h-5 w-5 text-text-muted" />
                 <button
                   type="button"
                   onClick={handleClear}
                   title="Clear file"
-                  className="p-1.5 rounded-lg hover:bg-border/50 text-text-muted hover:text-text-primary transition-colors"
+                  className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="mt-4 p-3 rounded-lg bg-background/50 border border-border/50">
-              <div className="flex items-center gap-2 text-accent text-sm">
-                <CheckCircle className="w-4 h-4" />
+            <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <CheckCircle className="h-4 w-4 text-text-muted" />
                 Ready to categorize {rawBookmarks.length} bookmarks
               </div>
             </div>

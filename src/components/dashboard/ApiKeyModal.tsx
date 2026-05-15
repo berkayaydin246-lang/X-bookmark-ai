@@ -2,106 +2,177 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Key, ExternalLink, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { AlertCircle, ExternalLink, Settings2 } from "lucide-react";
+import ModelSelector from "@/components/dashboard/ModelSelector";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import { ApiKeys, SupportedModelId } from "@/lib/types";
 import { useBookmarkStore } from "@/store/useBookmarkStore";
 
+const SETTINGS_STORAGE_KEY = "x-bookmark-ai-settings-v1";
+
 export default function ApiKeyModal() {
-  const [key, setKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
+  const selectedModel = useBookmarkStore((state) => state.selectedModel);
+  const apiKeys = useBookmarkStore((state) => state.apiKeys);
+  const ollamaModel = useBookmarkStore((state) => state.ollamaModel);
+  const hydrateSettings = useBookmarkStore((state) => state.hydrateSettings);
+
+  const [draftSelectedModel, setDraftSelectedModel] =
+    useState<SupportedModelId>(selectedModel);
+  const [draftApiKeys, setDraftApiKeys] = useState<ApiKeys>(apiKeys);
+  const [draftOllamaModel, setDraftOllamaModel] = useState(ollamaModel);
   const [error, setError] = useState("");
-  const setApiKey = useBookmarkStore((s) => s.setApiKey);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = key.trim();
+  const handleApiKeyChange = (provider: keyof ApiKeys, key: string) => {
+    setDraftApiKeys((current) => ({
+      ...current,
+      [provider]: key,
+    }));
+    setError("");
+  };
 
-    if (!trimmed) {
-      setError("Please enter your API key.");
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const validationError = validateSelection(
+      draftSelectedModel,
+      draftApiKeys,
+      draftOllamaModel
+    );
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
-    if (!trimmed.startsWith("sk-ant-")) {
-      setError("Invalid key format. Anthropic API keys start with 'sk-ant-'.");
-      return;
-    }
+    const nextSettings = {
+      selectedModel: draftSelectedModel,
+      apiKeys: draftApiKeys,
+      ollamaModel: draftOllamaModel.trim(),
+    };
 
-    sessionStorage.setItem("anthropic-key", trimmed);
-    setApiKey(trimmed);
+    hydrateSettings(nextSettings);
+    sessionStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.25 }}
+        className="w-full max-w-3xl"
       >
-        <div className="p-8 rounded-2xl bg-surface border border-border">
-          <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-6">
-            <Key className="w-7 h-7 text-accent" />
-          </div>
-
-          <h2 className="font-display text-2xl font-bold text-text-primary mb-2">
-            Enter Your API Key
-          </h2>
-          <p className="text-text-muted text-sm leading-relaxed mb-6">
-            Your API key is only used to call Anthropic&apos;s API directly from
-            this app. We never store it on any server.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <Input
-                type={showKey ? "text" : "password"}
-                placeholder="sk-ant-api03-..."
-                value={key}
-                onChange={(e) => {
-                  setKey(e.target.value);
-                  setError("");
-                }}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
-              >
-                {showKey ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+        <div className="soft-shadow rounded-[28px] border border-border bg-card p-8">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-badge">
+                <Settings2 className="h-7 w-7 text-text-muted" />
+              </div>
+              <div>
+                <h2 className="font-display text-2xl font-bold text-text-primary">
+                  Choose Your Model
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+                  Pick a provider, add its API key if needed, and we&apos;ll keep
+                  the settings in this session.
+                </p>
+              </div>
             </div>
 
+            <ThemeToggle />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <ModelSelector
+              selectedModel={draftSelectedModel}
+              apiKeys={draftApiKeys}
+              ollamaModel={draftOllamaModel}
+              onSelectedModelChange={(model) => {
+                setDraftSelectedModel(model);
+                setError("");
+              }}
+              onApiKeyChange={handleApiKeyChange}
+              onOllamaModelChange={(model) => {
+                setDraftOllamaModel(model);
+                setError("");
+              }}
+            />
+
             {error && (
-              <div className="flex items-center gap-2 text-red-400 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-badge px-3 py-2 text-sm text-text-secondary">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 text-text-muted" />
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full">
-              Continue
-            </Button>
-          </form>
+            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <a
+                href={getProviderSetupLink(draftSelectedModel)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-link transition-colors hover:text-text-primary"
+              >
+                Open provider setup guide
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
 
-          <div className="mt-6 pt-6 border-t border-border">
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent-light transition-colors"
-            >
-              Get an API key from Anthropic
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
+              <Button type="submit" className="sm:min-w-40">
+                Continue
+              </Button>
+            </div>
+          </form>
         </div>
       </motion.div>
     </div>
   );
+}
+
+function validateSelection(
+  selectedModel: SupportedModelId,
+  apiKeys: ApiKeys,
+  ollamaModel: string
+): string | null {
+  if (selectedModel === "ollama") {
+    return ollamaModel.trim()
+      ? null
+      : "Please enter the Ollama model name you want to use.";
+  }
+
+  if (selectedModel === "anthropic-haiku") {
+    const key = apiKeys.anthropic.trim();
+    if (!key) return "Please enter your Anthropic API key.";
+    if (!key.startsWith("sk-ant-")) {
+      return "Anthropic API keys should start with 'sk-ant-'.";
+    }
+    return null;
+  }
+
+  if (selectedModel === "groq-llama") {
+    const key = apiKeys.groq.trim();
+    if (!key) return "Please enter your Groq API key.";
+    return null;
+  }
+
+  if (!apiKeys.gemini.trim()) {
+    return "Please enter your Gemini API key.";
+  }
+
+  return null;
+}
+
+function getProviderSetupLink(selectedModel: SupportedModelId): string {
+  if (selectedModel === "anthropic-haiku") {
+    return "https://console.anthropic.com/settings/keys";
+  }
+
+  if (selectedModel === "groq-llama") {
+    return "https://console.groq.com/keys";
+  }
+
+  if (selectedModel === "gemini-flash") {
+    return "https://aistudio.google.com/app/apikey";
+  }
+
+  return "https://ollama.com/download";
 }
